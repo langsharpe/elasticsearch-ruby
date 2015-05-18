@@ -188,7 +188,13 @@ module Elasticsearch
 
             connection.healthy! if connection.failures > 0
 
-          rescue *host_unreachable_exceptions => e
+            json       = serializer.load(response.body) if response.headers && response.headers["content-type"] =~ /json/
+
+            if method.upcase == 'GET' && !response.body
+              raise StandardError 'A GET HTTP request should have a response'
+            end
+
+          rescue Exception => e
             logger.error "[#{e.class}] #{e.message} #{connection.host.inspect}" if logger
 
             connection.dead!
@@ -209,10 +215,6 @@ module Elasticsearch
             else
               raise e
             end
-
-          rescue Exception => e
-            logger.fatal "[#{e.class}] #{e.message} (#{connection.host.inspect})" if logger
-            raise e
           end
 
           duration = Time.now-start if logger || tracer
